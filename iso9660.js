@@ -1,4 +1,7 @@
+"use strict";
+
 importScripts('jsstruct.js')
+//importScripts('traceur-compiler/bin/traceur.js')
 
 function rtrim(s,thing)
 {
@@ -16,7 +19,12 @@ self.addEventListener('message', function(evt) {
         var file = evt.data.file
         var isofile = new ISO9660(file)
         console.log('got isofile', isofile)
+
+        for (let path of isofile.tree()) {
+            console.log("PATH found!", path)
+        }
     }
+
     self.postMessage({msg:'thanks!'})
     
 /*
@@ -163,7 +171,7 @@ ISO9660.prototype = {
     },
     _unpack_record: function(read) {
         read = read || 0
-        var l0, l1, d, l2, extra
+        var l0, l1, d, l2, extra, t, e
 
         l0 = this._unpack('B')
 
@@ -189,7 +197,7 @@ ISO9660.prototype = {
         if (l2 % 2 == 0)
             this._unpack('B')
 
-        t = 34 + l2 - (l2 % 2)
+        t = (34 + l2 - (l2 % 2))
 
         e = l0-t
         if (e>0)
@@ -213,5 +221,78 @@ ISO9660.prototype = {
     _unpack_vd_datetime: function() {
         return this._unpack_raw(17)
     },
+
+    tree: function* (get_files) {
+        var gen
+        get_files = (get_files === undefined ? true : false)
+        if (get_files)
+            gen = this._tree_node(this._root)
+        else
+            gen = this._tree_path('', 1)
+
+        yield '/'
+        for (let i of gen) {
+            yield i
+        }
+    },
+    _tree_path: function* (name, index) {
+        var spacer = function(s) { return name + '/' + s }
+        var c
+
+        for (var i = 0; i< this._paths.length; i++) {
+            c = this._paths[i]
+
+            if (c['parent'] == index && i != 0) {
+                yield spacer(c['name'])
+                for (let d of this._tree_path(spacer(c['name']), i+1)) {
+                    yield d
+                }
+            }
+        }
+    },
+    _tree_node: function* (node) {
+        var spacer = function(s) { return node['name'] + '/' + s }
+
+        for (let c of this._unpack_dir_children(node)) {
+            // c = list(c) ?
+            yield spacer(c['name'])
+            if (c['flags'] & 2) {
+                for (let d of this._tree_node(c)) {
+                    yield spacer(d)
+                }
+            }
+        }
+    },
+
+    _unpack_dir_children: function* (d) {
+        var sector, read, r_self, r_parent, to_read, data, tmp
+
+        sector = d['ex_loc']
+        read = 0
+        this._get_sector(sector, 2048)
+
+        tmp = this._unpack_record(read)
+        read = tmp[0]; r_self = tmp[1]
+
+        tmp = this._unpack_record(read)
+        read = tmp[0]; r_parent = tmp[1]
+
+        while (read < r_self['ex_len']) { //Iterate over files in the directory
+            if (read % 2048 == 0) {
+                sector += 1
+                this._get_sector(sector, 2048)
+            }
+            tmp = this._unpack_record(read)
+            read = tmp[0], data = tmp[1]
+
+            if (data == null || data === undefined) { //end of directory listing
+                to_read = 2048 - (read % 2048)
+                this._unpack_raw(to_read)
+                read += to_read
+            } else {
+                yield data
+            }
+        }
+    }
 
 }
