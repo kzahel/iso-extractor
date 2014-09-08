@@ -1,6 +1,6 @@
 function WorkerThread() {
-//    this.worker = new Worker('iso9660.traceur.js')
-    this.worker = new Worker('iso9660.js')
+    this.worker = new Worker('iso9660.traceur.js')
+//    this.worker = new Worker('iso9660.js')
     this.worker.addEventListener('message',this.onMessage.bind(this))
     this.worker.addEventListener('error',this.onError.bind(this))
     this.tids = {}

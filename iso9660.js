@@ -1,7 +1,7 @@
 "use strict";
 
+importScripts('traceur-compiler/bin/traceur.js')
 importScripts('jsstruct.js')
-//importScripts('traceur-compiler/bin/traceur.js')
 
 function rtrim(s,thing)
 {
