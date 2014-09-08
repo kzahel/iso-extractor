@@ -20,8 +20,12 @@ self.addEventListener('message', function(evt) {
         var isofile = new ISO9660(file)
         console.log('got isofile', isofile)
 
+        var limit = 69
+        var i = 0
         for (let path of isofile.tree()) {
-            console.log("PATH found!", path)
+            if (i > limit) {  }
+            console.log(i,"PATH found!", path)
+            i++
         }
     }
 
@@ -42,7 +46,7 @@ function FileWrapper(file, slicea, sliceb) {
     this.fr = new FileReaderSync
     this.file = file
     this.pos = slicea || 0
-    this.sliceb = sliceb
+    this.sliceb = Math.min(this.file.size, sliceb)
 }
 FileWrapper.prototype = {
     seek: function(idx) {
@@ -70,7 +74,6 @@ function ISO9660(file) {
     var ty
     var sector = 0x10
     while (true) {
-        console.log('getting sector',sector)
         this._get_sector(sector, 2048)
         sector += 1
         ty = this._unpack('B')
@@ -107,14 +110,13 @@ function ISO9660(file) {
 
         this._paths.push(p)
 
-        l0 -= 8 + l1 + (l1 % 2)
+        l0 -= (8 + l1 + (l1 % 2))
     }
     console.assert( l0 == 0 )
 }
 
 ISO9660.prototype = {
     _get_sector_file: function(sector, length) {
-        //var f = new FileWrapper(this._file)
         this._buff = new FileWrapper(this._file, sector*2048, sector*2048 + length)
     },
     _unpack: function(st) {
@@ -123,7 +125,9 @@ ISO9660.prototype = {
         } else {
             st = '<' + st
         }
-        d = jsstruct.unpack(st, this._buff.read(jsstruct.calcsize(st)))
+        var inp = this._buff.read(jsstruct.calcsize(st))
+        if (inp.byteLength == 0) { console.warn('attempt to unpack from zero length buffer',st) }
+        d = jsstruct.unpack(st, inp)
         if (st.length == 2) {
             return d[0]
         } else {
@@ -253,13 +257,23 @@ ISO9660.prototype = {
     _tree_node: function* (node) {
         var spacer = function(s) { return node['name'] + '/' + s }
 
+        var l = []
         for (let c of this._unpack_dir_children(node)) {
+            l.push(c) // turn generator into list. because otherwise interleaving/broken (depth vs breadth tree traversal)
+        }
+
+        //for (let c of this._unpack_dir_children(node)) {
+        for (var i=0; i<l.length; i++) {
+            var c = l[i]
             // c = list(c) ?
             yield spacer(c['name'])
             if (c['flags'] & 2) {
+                //yield * this._tree_node(c)
+
                 for (let d of this._tree_node(c)) {
                     yield spacer(d)
                 }
+
             }
         }
     },
@@ -268,6 +282,7 @@ ISO9660.prototype = {
         var sector, read, r_self, r_parent, to_read, data, tmp
 
         sector = d['ex_loc']
+
         read = 0
         this._get_sector(sector, 2048)
 
@@ -285,7 +300,7 @@ ISO9660.prototype = {
             tmp = this._unpack_record(read)
             read = tmp[0], data = tmp[1]
 
-            if (data == null || data === undefined) { //end of directory listing
+            if (data == null) { //end of directory listing
                 to_read = 2048 - (read % 2048)
                 this._unpack_raw(to_read)
                 read += to_read

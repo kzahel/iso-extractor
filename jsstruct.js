@@ -179,7 +179,11 @@
                 var view = new DataView(input)
 
                 for (i = 0; i < c.size; i++) {
-                    result.push(view[c.meth](pos, useLE));
+                    if (pos + c.entry.size <= input.byteLength) {
+                        result.push(view[c.meth](pos, useLE));
+                    } else {
+                        console.warn('outside dataview bounds...', pos,'/',input.byteLength, c)
+                    }
                     pos += c.entry.size;
                 }
             }
