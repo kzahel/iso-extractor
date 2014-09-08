@@ -24,12 +24,13 @@ self.addEventListener('message', function(evt) {
         var i = 0
         for (let path of isofile.tree()) {
             if (i > limit) {  }
-            console.log(i,"PATH found!", path)
+            //console.log(i,"PATH found!", path)
+            self.postMessage({tid:evt.data.tid, msg:'foundpath',path:path,more:true})
             i++
         }
     }
 
-    self.postMessage({msg:'thanks!'})
+    self.postMessage({msg:'done', tid:evt.data.tid})
     
 /*
     if (transferable) {
