@@ -1,0 +1,39 @@
+{
+    "name": "ISO Extractor",
+    "short_name": "ISO Extractor",
+    "description": "Open and extract files from ISO 9660 file archives (CD Image)",
+    "author": "Kyle Graehl",
+    "version": "0.0.1",
+    "manifest_version": 2,
+    "offline_enabled": true,
+    "minimum_chrome_version": "31",
+    "file_handlers": {
+        "any": {
+            "types": [
+                "application/x-iso9660-image"
+            ],
+            "extensions": [
+                "iso"
+            ],
+            "title": "Open with ISO Extractor"
+        }
+    },
+    "app": {
+        "background": {
+            "scripts": ["worker.js","background.js"]
+        }
+    },
+    "permissions": [
+        {"fileSystem":["write","directory","retainEntries"]}
+    ],
+    "icons": { 
+        "16": "iso-ico-16.png",
+        "19": "iso-ico-19.png",
+        "32": "iso-ico-32.png",
+        "38": "iso-ico-38.png",
+        "48": "iso-ico-48.png",
+        "64": "iso-ico-64.png",
+        "96": "iso-ico-96.png",
+        "128": "iso-ico-128.png"
+    }
+}
